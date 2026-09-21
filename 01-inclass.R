@@ -28,9 +28,14 @@ library(tidyverse)
 
 install.packages("flextable")
 library(flextable)
+library(stringr)
 
-yrbss$Grade <- yrbss$grade
-yrbss$Gender <- yrbss$gender
+# Capitalize category labels
+yrbss$Grade <- sapply(yrbss$grade, str_to_sentence)
+yrbss$Gender <- sapply(yrbss$gender, str_to_sentence)
+
+# Convert grades col to factor, arrange rows of df by ascending order of grade
+yrbss$Grade <- factor(yrbss$Grade, levels = c("9", "10", "11", "12", "Other", NA))
 
 z <- summarizor(
   yrbss[c("Grade", "Gender")],
@@ -50,16 +55,53 @@ ft_1
 # no one correct way to do this
 # Ensure that the figure is clearly labeled and includes an appropriate legend
 
-aggregate(xxx) |>
-  ggplot(aes(xxx)) + 
-  geom_line()
-...
+# First remove rows with missing values in grade, gender, physically_active_7d
+yrbss_clean <- yrbss %>% drop_na(Grade, Gender, physically_active_7d)
 
+avg_phys_plot <- aggregate(
+  x = yrbss_clean$physically_active_7d, 
+  by = list(Grade = yrbss_clean$Grade, Gender = yrbss_clean$Gender), 
+  FUN = mean
+) |>
+  ggplot(mapping = aes(x = Grade, y = x, group = interaction(Gender), color=Gender)) + 
+  geom_point() + 
+  labs(title="Mean Physical Activity of Youth Among Grades and Gender", x="Grade", y="Average # of Days") +
+  geom_line()
+
+avg_phys_plot
 
 # Create a plot that shows the relationship betwen physical activity and bmi
 # among female students in grade 12 
 # Ensure that the figure is clearly labeled and includes an appropriate legend
 
+# Drop all rows with missing values, add column with bmi
+yrbss_clean <- yrbss %>% drop_na(Grade, Gender, weight, height, physically_active_7d)
+yrbss_clean$bmi <- yrbss_clean$weight / (yrbss_clean$height)^2
+phys_bmi <- subset(yrbss_clean, Gender == "Female" & Grade == 12) 
 
+# Plot 1: Line plot showing average BMI over # of physically active days
+phys_bmi_plot_1 <- aggregate(
+  x = phys_bmi$bmi, 
+  by = list(Phys = phys_bmi$physically_active_7d), 
+  FUN = mean
+) |>
+  ggplot(
+    mapping = aes(x = Phys, y = x)
+  ) + 
+  geom_line() + 
+  labs(title=str_wrap("Physical Activity vs Average BMI Among Female Students in Grade 12", width = 50), x="# of Physically Active Days", y="Average BMI (kg/m^2)") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+phys_bmi_plot_1
+
+# Plot 2: Box and whisker plot of BMI over # of physically active days
+phys_bmi_plot_2 <- ggplot(
+  data = phys_bmi, 
+  mapping = aes(x = factor(physically_active_7d), y = bmi)
+) + 
+  geom_boxplot() + 
+  labs(title="Physical Activity vs BMI Among Female Students in Grade 12", x="# of Physically Active Days", y="BMI (kg/m^2)")
+
+phys_bmi_plot_2
 
 # Push your completed code to your GitHub repository
